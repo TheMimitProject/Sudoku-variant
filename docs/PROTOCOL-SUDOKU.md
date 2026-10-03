@@ -99,6 +99,7 @@ This is honour-system scoring — anyone could run the solver — but it needs n
 - The proof is `sha256("<date>:<nick>:<solution>")` cut to 16 hex chars. It shows you had the right grid — check it
   with `/daily verify @ann <proof>` once you've solved it too, or `npm run host -- daily-verify ann <proof> --date 2026-10-03`.
 - `/daily board` ranks posted times (each mistake adds 30 s).
+- `/up daily` uploads your time and proof to the global leaderboard on the Uplink map, which re-checks every proof.
 
 ## Sizes on the wire
 

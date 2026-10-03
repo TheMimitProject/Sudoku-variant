@@ -43,6 +43,22 @@ Every puzzle has **exactly one solution** (the generator checks), so "first corr
 - **Scavenger Hunt** — clues lead to physical spots with a code word; being in range to read it is the proof.
 - **Mesh Ping Test** — numbered PING packets; the report shows loss and reply time per node. Run it before a game.
 
+### Uplink — from the mesh to the web
+
+Anyone with signal can act as a gateway. Messages marked `/up` wait on the mesh until a gateway reaches the
+internet, then appear on a public map built on Nostr relays:
+
+- **SOS with a location** — public at the precision the sender picks (~20 m, ~600 m or ~20 km); the exact spot goes
+  only to people they've named, as an encrypted DM.
+- **"I'm safe" check-ins** — people outside the area can look someone up by name.
+- **Resources and hazards** — water, shelter, medical, power, signal, blocked roads, fire, flooding. Other people can
+  confirm them; senders can mark them resolved; everything expires.
+- **Mesh coverage**, **Daily Puzzle times** (with proofs) and **scavenger results**.
+- **Send from your phone** — a page that uses GPS and signs your message with a key kept on your device, so the map
+  can show it really came from you.
+
+Nothing leaves the mesh without `/up`. Not an emergency service. Details: [docs/PROTOCOL-UPLINK.md](docs/PROTOCOL-UPLINK.md).
+
 ---
 
 ## Quick start
@@ -75,6 +91,15 @@ Type the messages you see in bitchat as `nick: text`. Paste back what it prints:
 ```
 ghostnode: /sudo play R3C5=7          ← you type what you saw
 >>> ✓ ghostnode: R3C5=7 (+1)          ← you paste this into #sudoku
+```
+
+Run an uplink gateway (store-and-forward to the web map):
+
+```bash
+npm run host -- checkin --gateway                    # dry run: events go to ~/.meshhost/uplink-outbox.jsonl
+npm run host -- checkin --gateway --relays default   # publish to public Nostr relays
+npm run host -- checkin --gateway --drill            # practice: everything marked as a drill
+npm run relay                                        # your own small relay on ws://localhost:7447
 ```
 
 Replay a transcript (handy for testing): `npm run host -- sudoku --seed 482913 --script examples/sudoku-race.txt`
@@ -112,7 +137,9 @@ See [docs/PROTOCOL-SUDOKU.md](docs/PROTOCOL-SUDOKU.md) for the full spec.
 bin/meshhost.js          host CLI
 src/engine/              shared library: meshgame session, sudoku engine, sha256, commit-reveal, rng, parsers
 src/games/               sudoku (all modes), daily, hunt, battleship, minesweeper, nonogram, wordgrid
-src/tools/               poll, checkin, scavenger, pingtest
+src/tools/               poll, checkin (with /up), scavenger, pingtest
+src/uplink/              geohash, records, signing, store-and-forward queue, gateway, Nostr
+scripts/                 local relay, dictionary builder
 src/catalog.js           registry with per-game options
 src/web/                 React simulators (Vite + Tailwind)
 tests/                   vitest suite
@@ -124,6 +151,7 @@ examples/                transcript and scavenger-hunt config
 
 - [Mesh Sudoku protocol](docs/PROTOCOL-SUDOKU.md) — every mode, encoding, hostless play
 - [Mesh Hunt protocol](docs/PROTOCOL-MESHHUNT.md)
+- [Uplink protocol](docs/PROTOCOL-UPLINK.md) — what gets uploaded, privacy, signing, event format
 - [Other games and tools](docs/GAMES.md)
 - [Writing a game](docs/WRITING-A-GAME.md) — a new game is one small rules file
 - [Changelog](CHANGELOG.md)

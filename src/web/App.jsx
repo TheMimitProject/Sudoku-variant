@@ -4,6 +4,8 @@ import HuntPage from "./HuntPage.jsx";
 
 // The console pulls in every game (and Word Grid's dictionary), so it loads on demand.
 const ConsolePage = lazy(() => import("./ConsolePage.jsx"));
+// The uplink pages bring in the map and Nostr libraries, so they load on demand too.
+const UplinkPage = lazy(() => import("./UplinkPage.jsx"));
 
 const read = () => {
   const [page = "sudoku", id = null] = window.location.hash.replace(/^#\/?/, "").split("/");
@@ -14,6 +16,7 @@ const TABS = [
   ["sudoku", "Mesh Sudoku"],
   ["hunt", "Mesh Hunt"],
   ["more", "More games & tools"],
+  ["uplink", "Uplink map"],
   ["host", "Host it for real"],
 ];
 
@@ -33,6 +36,7 @@ npm run host -- list
 npm run host -- sudoku --mode territory --difficulty hard
 npm run host -- hunt
 npm run host -- sudoku --bots 3     # practice against simulated players
+npm run host -- checkin --gateway --relays default   # uplink gateway
 
 ghostnode: /sudo play R3C5=7        # ← what you type
 >>> ✓ ghostnode: R3C5=7 (+1)        # ← what you paste into #sudoku`}</pre>
@@ -91,6 +95,10 @@ export default function App() {
           <Suspense fallback={<div className="text-xs text-teal-600">loading games…</div>}>
             <ConsolePage id={route.id} onPick={(id) => go("more", id)} />
           </Suspense>
+        ) : route.page === "uplink" ? (
+          <Suspense fallback={<div className="text-xs text-teal-600">loading map…</div>}>
+            <UplinkPage />
+          </Suspense>
         ) : route.page === "host" ? (
           <HostGuide />
         ) : (
@@ -99,7 +107,7 @@ export default function App() {
       </main>
 
       <footer className="mt-10 text-[11px] text-teal-700 flex flex-wrap gap-4">
-        <span>Simulated players run in your browser. Nothing is sent anywhere.</span>
+        <span>Simulated players run in your browser. Only the live map and "publish directly" talk to the internet.</span>
         <a className="hover:text-teal-400" href="https://github.com/permissionlesstech/bitchat" target="_blank" rel="noreferrer">bitchat ↗</a>
         <a className="hover:text-teal-400" href="https://github.com/TheMimitProject/Sudoku-variant" target="_blank" rel="noreferrer">source ↗</a>
       </footer>

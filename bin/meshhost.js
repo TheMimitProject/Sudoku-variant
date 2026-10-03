@@ -7,13 +7,19 @@
 // "/msg nick …" lines are private messages.
 
 import readline from "node:readline";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, chmodSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { createSession, renderOutput } from "../src/engine/meshgame.js";
 import { CATALOG, byId, defaultOptions } from "../src/catalog.js";
 import { generate } from "../src/engine/sudoku.js";
 import { parsePuzzleId } from "../src/games/sudoku.js";
 import { dailyPuzzle, verifyDaily } from "../src/games/daily.js";
 import { parseCell, cellName } from "../src/engine/commands.js";
+import { createGateway } from "../src/uplink/gateway.js";
+import { UplinkQueue } from "../src/uplink/queue.js";
+import { bytesToHex, hexToBytes } from "../src/uplink/records.js";
+import { toEvent, gatewayPubkey } from "../src/uplink/crypto.js";
 
 const C = process.stdout.isTTY
   ? { dim: (s) => `\x1b[2m${s}\x1b[0m`, cyan: (s) => `\x1b[36m${s}\x1b[0m`, mag: (s) => `\x1b[35m${s}\x1b[0m`, red: (s) => `\x1b[31m${s}\x1b[0m`, green: (s) => `\x1b[32m${s}\x1b[0m` }
@@ -49,9 +55,16 @@ options
   --bots N                              add N simulated players (practice)
   --script file.txt                     replay a transcript, then exit
 
+uplink gateway (check-in, ping test, daily, scavenger)
+  --gateway                             queue /up records and forward them to the web
+  --relays default|wss://a,wss://b      publish to Nostr relays (without this: dry run to a file)
+  --drill                               mark everything as a drill (hidden on the public map by default)
+  --state-dir DIR                       where the key and queue live (default ~/.meshhost)
+
 in a session
   ghostnode: /sudo play R3C5=7          feed a message you saw
-  !board  !score  !who  !quit           host shortcuts`);
+  !board  !score  !who  !quit           host shortcuts
+  !up status|flush|online|offline       gateway controls`);
 }
 
 function list() {
@@ -93,6 +106,15 @@ function host(entry, flags) {
 
   console.log(C.dim(`hosting ${entry.module.name} on ${entry.module.channel} — paste lines as "nick: message". !help for shortcuts.`));
   print(session.intro);
+  const gateway = flags.gateway ? setupGateway(flags) : null;
+  if (gateway) session.uplinkInfo = () => gateway.status();
+  const pumpUplinks = () => {
+    const items = session.drainUplinks();
+    if (!items.length) return;
+    if (!gateway) return console.log(C.dim(`(${items.length} /up record${items.length > 1 ? "s" : ""} ignored — start with --gateway to forward them)`));
+    gateway.accept(items);
+    gateway.flush();
+  };
 
   const bots = [];
   const botCount = Number(flags.bots || 0);
@@ -108,7 +130,15 @@ function host(entry, flags) {
     if (t.startsWith("!")) {
       const cmd = t.slice(1).toLowerCase();
       if (cmd === "quit" || cmd === "exit") process.exit(0);
-      if (cmd === "help") return console.log(C.dim("!board !score !who !quit  ·  any line 'nick: text' is a chat message"));
+      if (cmd === "help") return console.log(C.dim("!board !score !who !quit !up status|flush|online|offline  ·  any line 'nick: text' is a chat message"));
+      if (cmd.startsWith("up")) {
+        if (!gateway) return console.log(C.red("no gateway — restart with --gateway"));
+        const sub = cmd.split(/\s+/)[1] || "status";
+        if (sub === "online") gateway.setOnline(true);
+        if (sub === "offline") gateway.setOnline(false);
+        if (sub === "flush" || sub === "online") gateway.flush();
+        return console.log(C.green(gateway.status()));
+      }
       const as = session.players()[0] || "host";
       const map = { board: "/sync", score: "/score", who: "/who" };
       return print(session.receive(as, map[cmd] || `/${cmd}`, Date.now()));
@@ -116,6 +146,7 @@ function host(entry, flags) {
     const m = t.match(/^<?([^:>\s]+)>?:?\s+(.*)$/);
     if (!m) return console.log(C.red('format: "nick: message"'));
     print(session.receive(m[1], m[2], Date.now()));
+    pumpUplinks();
   };
 
   if (flags.script) {
@@ -127,6 +158,8 @@ function host(entry, flags) {
       if (!line.startsWith("#")) feed(line);
     }
     print(session.tick(t + 1e9));
+    pumpUplinks();
+    if (gateway) gateway.flush().then(() => console.log(C.green(gateway.status())));
     return;
   }
 
@@ -138,8 +171,11 @@ function host(entry, flags) {
       if (mv) {
         console.log(C.dim(`<${b}> ${mv}`));
         print(session.receive(b, mv, Date.now()));
+        pumpUplinks();
       }
     }
+    // Store-and-forward: retry anything still waiting every 30 s.
+    if (gateway && gateway.online && Date.now() % 30000 < 1000) gateway.flush();
     if (session.ended) {
       clearInterval(tick);
       console.log(C.dim("game over — !quit or Ctrl-C"));
@@ -152,6 +188,57 @@ function host(entry, flags) {
     clearInterval(tick);
     process.exit(0);
   });
+}
+
+function setupGateway(flags) {
+  const dir = flags["state-dir"] || join(homedir(), ".meshhost");
+  mkdirSync(dir, { recursive: true });
+  const keyFile = join(dir, "gateway.key");
+  let secret;
+  if (existsSync(keyFile)) secret = hexToBytes(readFileSync(keyFile, "utf8").trim());
+  else {
+    secret = crypto.getRandomValues(new Uint8Array(32));
+    writeFileSync(keyFile, bytesToHex(secret) + "\n");
+    try { chmodSync(keyFile, 0o600); } catch {}
+  }
+  const queueFile = join(dir, "uplink-queue.json");
+  const queue = existsSync(queueFile) ? UplinkQueue.fromJSON(readFileSync(queueFile, "utf8")) : new UplinkQueue();
+  const save = () => writeFileSync(queueFile, JSON.stringify(queue));
+  const log = (l) => console.log(C.dim(`[uplink] ${l}`));
+
+  let publish, label;
+  if (flags.relays) {
+    label = "live";
+    const nostr = import("../src/uplink/nostr.js").then(async (m) => {
+      // Use the "ws" package: Node's built-in WebSocket can recurse on connection
+      // errors inside nostr-tools and crash the host while it's offline.
+      m.setWebSocket((await import("ws")).default);
+      return m;
+    });
+    const relays = flags.relays === true || flags.relays === "default" ? null : String(flags.relays).split(",").map((r) => r.trim()).filter(Boolean);
+    publish = async (item) => {
+      const m = await nostr;
+      return m.publishItem(item, secret, relays || m.DEFAULT_RELAYS);
+    };
+    nostr.then((m) => log(`publishing to ${(relays || m.DEFAULT_RELAYS).join(", ")}`));
+  } else {
+    label = "dry run";
+    const outbox = join(dir, "uplink-outbox.jsonl");
+    publish = async (item) => {
+      appendFileSync(outbox, JSON.stringify(toEvent(item.record, secret)) + "\n");
+      if (item.exactGeo && item.contacts?.length) {
+        const { contactMessages } = await import("../src/uplink/nostr.js");
+        for (const dm of contactMessages(item.record, item.exactGeo, item.contacts, secret)) appendFileSync(outbox, JSON.stringify(dm) + "\n");
+      }
+      return { ok: [outbox], failed: [] };
+    };
+    log(`dry run — events are written to ${outbox}. Add --relays default to publish for real.`);
+  }
+  log(`gateway key ${gatewayPubkey(secret).slice(0, 16)}… · queue ${queueFile}`);
+  const gw = createGateway({ queue, publish, save, log, drill: !!flags.drill, label });
+  const s = queue.stats();
+  if (s.pending) log(`${s.pending} record${s.pending > 1 ? "s" : ""} waiting from last time`);
+  return gw;
 }
 
 const { pos, flags } = parseArgs(process.argv.slice(2));

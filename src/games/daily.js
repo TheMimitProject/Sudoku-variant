@@ -9,6 +9,7 @@ import { generate, formatBoard, nakedSingles } from "../engine/sudoku.js";
 import { dayKey } from "../engine/rng.js";
 import { commit, verify } from "../engine/commit.js";
 import { parseCell, cellName, cleanNick, formatDuration } from "../engine/commands.js";
+import { makeRecord } from "../uplink/records.js";
 
 export function dailyPuzzle(date = dayKey()) {
   return generate({ size: 9, difficulty: "medium", seed: `daily:${date}` });
@@ -87,6 +88,20 @@ export default {
         const proof = dailyProof(state.solution, state.date, nick);
         state.results.push({ nick, time: m.time, mistakes: m.mistakes, proof });
         ctx.say(`${nick} solved daily ${state.date} in ${formatDuration(m.time)} · ${m.mistakes} mistakes · proof ${proof}`);
+      },
+    },
+    {
+      name: "up daily",
+      usage: "up daily",
+      desc: "upload your posted time and proof to the global leaderboard",
+      run(ctx, state, nick) {
+        const m = me(ctx, state, nick);
+        if (!m.posted) return ctx.dm(nick, "post your time with /daily done first");
+        if (m.uploaded) return ctx.dm(nick, "already uploaded");
+        m.uploaded = true;
+        const proof = dailyProof(state.solution, state.date, nick);
+        ctx.uplink(makeRecord({ type: "daily", nick, ts: Math.floor(ctx.now / 1000), note: `${formatDuration(m.time)} · ${m.mistakes} mistakes`, data: { date: state.date, timeMs: m.time, mistakes: m.mistakes, proof } }));
+        ctx.dm(nick, "📡 queued for the global daily leaderboard (time + proof, no location)");
       },
     },
     {

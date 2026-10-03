@@ -3,6 +3,7 @@
 // spot to read the code is the proof; the mesh's short range does the rest.
 
 import { formatDuration } from "../engine/commands.js";
+import { makeRecord } from "../uplink/records.js";
 
 export const DEMO_HUNT = [
   { clue: "Where the water falls but never lands", code: "FOUNTAIN", hint: "center of the plaza" },
@@ -92,6 +93,21 @@ export default {
         if (!c) return;
         p.hints++;
         ctx.dm(nick, `hint: ${c.hint || "no hint for this one"} (+1m)`);
+      },
+    },
+    {
+      name: "up standings",
+      usage: "up standings",
+      desc: "host: upload the results (names and times, no locations)",
+      run(ctx, state, nick) {
+        const rows = Object.entries(state.progress).map(([n, p]) => ({
+          nick: n, found: p.step, of: state.clues.length,
+          timeMs: p.finishedAt != null ? p.finishedAt - p.startedAt + p.hints * HINT_PENALTY : null, hints: p.hints,
+        }));
+        if (!rows.length) return ctx.dm(nick, "nobody has played yet");
+        rows.sort((a, b) => b.found - a.found || (a.timeMs ?? 1e15) - (b.timeMs ?? 1e15));
+        ctx.uplink(makeRecord({ type: "hunt", nick, ts: Math.floor(ctx.now / 1000), note: `${rows.length} players · ${rows.filter((r) => r.timeMs != null).length} finished`, data: { clues: state.clues.length, standings: rows.slice(0, 20) } }));
+        ctx.say("📡 hunt results queued for upload");
       },
     },
     { name: "standings", aliases: ["score"], usage: "standings", desc: "who's where", readOnly: true, run: (ctx, state) => ctx.sayLines(leaderboard(ctx, state)) },

@@ -1,6 +1,6 @@
 {
   "name": "sudoku-variant",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Sudoku variants and other text games for the bitchat Bluetooth mesh — browser simulators plus a host CLI for real play",
   "type": "module",
   "bin": {
@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "words": "node scripts/build-words.mjs",
-    "host": "node bin/meshhost.js"
+    "host": "node bin/meshhost.js",
+    "relay": "node scripts/local-relay.mjs"
   },
   "keywords": [
     "bitchat",
@@ -33,8 +34,13 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "leaflet": "^1.9.4",
+    "nostr-tools": "^2.25.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",

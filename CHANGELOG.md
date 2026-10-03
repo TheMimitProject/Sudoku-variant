@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0 — 2026-10-03
+
+### Added — Uplink (mesh → web)
+- `/up` prefix on the Check-in Board: `sos`, `safe`, `enroute`, `report <type>`, `confirm`, `resolved`, plus
+  `/up contact <npub>` and `/up status`. Plain commands still stay on the mesh.
+- Location privacy levels (`!exact` ~20 m, `!area` ~600 m default, `!city` ~20 km); the exact location only goes to
+  named contacts as NIP-17 encrypted DMs.
+- Signed messages: the "Send from your phone" page uses GPS and a key kept in the browser; gateways verify the
+  signature and reject edited messages.
+- Gateway mode in `meshhost` (`--gateway`, `--relays`, `--drill`, `--state-dir`) with a store-and-forward queue that
+  survives restarts, retries, and a dry-run default.
+- Nostr event format (kind 4171) with geohash prefix tags, NIP-40 expiry, dedupe across gateways.
+- Uplink map page: simulator with an on/off gateway, live map from real relays, find-a-person, daily leaderboard with
+  proof checks, and the composer.
+- Ping Test coverage pins (`/pong … @location`, `/up probe`), `/up daily`, scavenger `/up standings`.
+- `npm run relay`: a small local Nostr relay for drills or a community's own map.
+- Tests for geohash, signing, events, aggregation, the queue, and an end-to-end run over a real relay connection.
+
 ## 0.2.0 — 2026-10-03
 
 A rebuild around a shared rules engine, so the simulators and real mesh play run the same code.

@@ -24,6 +24,7 @@ export function createSession(game, opts = {}) {
   let now = opts.now ?? 0;
   let ended = false;
   let endLines = null;
+  const uplinks = []; // records waiting for a gateway (see src/uplink)
 
   const ensure = (nick) => {
     if (!players.has(nick)) {
@@ -59,6 +60,9 @@ export function createSession(game, opts = {}) {
     allPlayers: () => [...players.keys()],
     isPlayer: (nick) => !!players.get(nick)?.active,
     after: (ms, fn) => timers.push({ at: now + ms, fn }),
+    /** Hand a record to whatever gateway is attached. `extra` is gateway-only data (never published). */
+    uplink: (record, extra = {}) => uplinks.push({ record, ...extra }),
+    uplinkStatus: () => session.uplinkInfo?.() ?? "no gateway attached — uploads wait here until one is",
     clearTimers: () => (timers.length = 0),
     standings: () =>
       [...players.entries()]
@@ -223,6 +227,14 @@ export function createSession(game, opts = {}) {
       const words = tokenize(text);
       return !!(words && findCommand(words)?.cmd.private);
     },
+
+    /** Take the records queued for upload since the last call. */
+    drainUplinks() {
+      return uplinks.splice(0, uplinks.length);
+    },
+
+    /** Optional: a gateway sets this so /up status can report its queue. */
+    uplinkInfo: null,
 
     view(nick) {
       return game.view ? game.view(state, nick, ctx) : null;

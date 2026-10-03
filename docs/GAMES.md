@@ -56,6 +56,9 @@ Board legend: `#` hidden · `F` flag · ` ` empty · digit = neighbouring mines 
 - `/omw <nick>` tells someone who asked for help that you're coming.
 - `/expect sam jo …` adds people you're waiting to hear from; they show as "no word".
 - `/roster` lists help first, then no word, en route and safe, each with "last heard" time.
+- `/report water|food|shelter|medical|power|signal|blocked|fire|flood|hazard [@location] [note]`, `/reports`.
+- Put `/up` in front of any of these to upload it to the web map — see [PROTOCOL-UPLINK.md](PROTOCOL-UPLINK.md).
+  `/up contact <npub>` sends your exact location privately to someone whenever you upload.
 
 ## Scavenger Hunt — `scavenger` · `#hunt`
 
@@ -64,6 +67,7 @@ Board legend: `#` hidden · `F` flag · ` ` empty · digit = neighbouring mines 
 - Each player progresses separately; their next clue arrives by DM.
 - `/hint` adds 1 minute. A wrong code costs a 10 s cooldown. `/standings` ranks progress and time.
 - Bluetooth range is the proof: you have to be near the card to read it.
+- Host `/up standings` uploads names and times (no locations).
 
 ## Mesh Ping Test — `pingtest` · `#ping`
 
@@ -71,3 +75,5 @@ Board legend: `#` hidden · `F` flag · ` ` empty · digit = neighbouring mines 
 - Everyone: `/pong 1-4,6` with the numbers that reached them, optionally `hops 3` if your app shows it.
 - `/probe report`: per node, % received and median reply time, graded 🟢 ≤10% loss · 🟡 ≤35% · 🔴 worse.
 - Reply time is measured when the host types your `/pong` into meshhost, so it includes the human in the loop.
+- Add `@location` to a `/pong` and the host can `/up probe` to put each node's result on the web map as a coverage
+  pin.
