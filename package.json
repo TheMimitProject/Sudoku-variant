@@ -37,6 +37,7 @@
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "leaflet": "^1.9.4",
+    "marked": "^18.0.14",
     "nostr-tools": "^2.25.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

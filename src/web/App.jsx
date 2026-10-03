@@ -6,6 +6,7 @@ import HuntPage from "./HuntPage.jsx";
 const ConsolePage = lazy(() => import("./ConsolePage.jsx"));
 // The uplink pages bring in the map and Nostr libraries, so they load on demand too.
 const UplinkPage = lazy(() => import("./UplinkPage.jsx"));
+const ProposalPage = lazy(() => import("./ProposalPage.jsx"));
 
 const read = () => {
   const [page = "sudoku", id = null] = window.location.hash.replace(/^#\/?/, "").split("/");
@@ -17,6 +18,7 @@ const TABS = [
   ["hunt", "Mesh Hunt"],
   ["more", "More games & tools"],
   ["uplink", "Uplink map"],
+  ["proposal", "Proposal"],
   ["host", "Host it for real"],
 ];
 
@@ -98,6 +100,10 @@ export default function App() {
         ) : route.page === "uplink" ? (
           <Suspense fallback={<div className="text-xs text-teal-600">loading map…</div>}>
             <UplinkPage />
+          </Suspense>
+        ) : route.page === "proposal" ? (
+          <Suspense fallback={<div className="text-xs text-teal-600">loading…</div>}>
+            <ProposalPage />
           </Suspense>
         ) : route.page === "host" ? (
           <HostGuide />
