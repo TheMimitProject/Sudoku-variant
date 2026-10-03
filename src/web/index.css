@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { -webkit-font-smoothing: antialiased; }
+body {
+  @apply bg-ink-950 text-teal-100 font-mono;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 20% -10%, rgba(45, 212, 191, 0.08), transparent 55%),
+    radial-gradient(ellipse at 110% 110%, rgba(217, 70, 239, 0.05), transparent 50%);
+}
+::selection { background: rgba(94, 234, 212, 0.3); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(94, 234, 212, 0.18); border-radius: 3px; }
+
+.panel { @apply bg-ink-900/80 border border-teal-900/40 rounded-lg; }
+.chip { @apply text-xs px-2.5 py-1 rounded border transition-colors; }
+.chip-on { @apply chip border-teal-500/60 bg-teal-900/40 text-teal-200; }
+.chip-off { @apply chip border-teal-900/40 text-teal-600 hover:text-teal-300 hover:border-teal-700/60; }
+.btn { @apply text-xs font-bold px-3 py-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed; }
+.btn-primary { @apply btn bg-teal-400 text-ink-950 hover:bg-teal-300; }
+.btn-ghost { @apply btn border border-teal-800/60 text-teal-300 hover:bg-teal-900/30; }
+.label { @apply text-[10px] uppercase tracking-[0.25em] text-teal-600; }
+
+@keyframes flash { from { background-color: rgba(250, 204, 21, 0.35); } to { background-color: transparent; } }
+.flash { animation: flash 0.9s ease-out; }

@@ -1,0 +1,12 @@
+# Two players race on a fixed puzzle. Replay with:
+#   npx meshhost sudoku --seed 482913 --script examples/sudoku-race.txt
+ghostnode: /join #sudoku
+rf_witch: /join #sudoku
+ghostnode: /sudo show
+rf_witch: /sudo play R1C6=8
+ghostnode: /sudo play R1C6=8
+ghostnode: /sudo play R1C7=3
+ghostnode: /sudo play R1C9=6
+ghostnode: /sudo play R1C9=6
+rf_witch: /sudo play R1C7=9
+ghostnode: /sudo score
